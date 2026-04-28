@@ -4,11 +4,18 @@ function createWindow () {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
-    webPreferences: { nodeIntegration: true }
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
   });
+
   win.loadFile('index.html');
-  // win.setFullScreen(true); // Раскомментируй для полного экрана
+  // win.setFullScreen(true); // Можно включить для полного экрана
 }
 
 app.whenReady().then(createWindow);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
