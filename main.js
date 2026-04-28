@@ -1,9 +1,11 @@
 const { app, BrowserWindow } = require('electron');
+const path = require('path');
 
-function createWindow () {
+function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
+    title: "Spider-Man PC Game",
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -11,7 +13,9 @@ function createWindow () {
   });
 
   win.loadFile('index.html');
-  // win.setFullScreen(true); // Можно включить для полного экрана
+  
+  // Раскомментируй строку ниже, если хочешь видеть ошибки в консоли справа
+  // win.webContents.openDevTools();
 }
 
 app.whenReady().then(createWindow);
