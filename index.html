@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Spider-Man Web Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; }
+        #instructions {
+            position: absolute; top: 10px; left: 10px;
+            color: white; font-family: sans-serif;
+            background: rgba(0,0,0,0.5); padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        WASD - Движение | Мышь - Обзор | ЛКМ - Паутина
+    </div>
+
+    <!-- Подключаем библиотеку Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // 1. Сцена и Камера
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Небо
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Свет
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 7.5).normalize();
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // 3. Город (кубы вместо зданий)
+        const buildings = [];
+        const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
+        for (let i = 0; i < 50; i++) {
+            const material = new THREE.MeshPhongMaterial({ color: 0x555555 });
+            const building = new THREE.Mesh(buildingGeometry, material);
+            building.position.x = Math.random() * 100 - 50;
+            building.position.z = Math.random() * 100 - 50;
+            const height = Math.random() * 20 + 5;
+            building.scale.set(5, height, 5);
+            building.position.y = height / 2;
+            scene.add(building);
+            buildings.push(building);
+        }
+
+        // 4. Игрок (просто капсула для начала)
+        const playerGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const playerMat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        const player = new THREE.Mesh(playerGeo, playerMat);
+        player.position.y = 2;
+        scene.add(player);
+
+        camera.position.set(0, 5, 10);
+
+        // 5. Логика управления
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // 6. Основной цикл игры
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Движение
+            if (keys['KeyW']) player.position.z -= 0.1;
+            if (keys['KeyS']) player.position.z += 0.1;
+            if (keys['KeyA']) player.position.x -= 0.1;
+            if (keys['KeyD']) player.position.x += 0.1;
+
+            // Камера следует за игроком
+            camera.position.lerp(new THREE.Vector3(player.position.x, player.position.y + 5, player.position.z + 10), 0.1);
+            camera.lookAt(player.position);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Адаптация под размер окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
