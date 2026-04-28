@@ -1,6 +1,6 @@
 {
-  "name": "spider-man-ultra",
-  "version": "1.2.0",
+  "name": "spider-man-city-life",
+  "version": "1.3.0",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
