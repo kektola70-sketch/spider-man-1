@@ -9,9 +9,7 @@ function createWindow () {
       contextIsolation: false
     }
   });
-
   win.loadFile('index.html');
-  // win.webContents.openDevTools(); // Раскомментируй для отладки
 }
 
 app.whenReady().then(createWindow);
