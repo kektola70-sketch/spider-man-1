@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Spider-Man PC Ultra</title>
+    <title>Spider-Man: Living City</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
         #ui { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 20px; border-left: 5px solid #f00; z-index: 100; pointer-events: none; }
@@ -11,10 +11,10 @@
 </head>
 <body>
     <div id="ui">
-        <h2 style="margin:0; color:#f00;">SPIDER-MAN: NEXT GEN</h2>
-        <b>WASD</b> — Движение / Ползание по стене<br>
-        <b>SPACE</b> — Прыжок / Отскок от стены<br>
-        <b>ЛКМ</b> — Паутина (удерживать)
+        <h2 style="margin:0; color:#f00;">SPIDER-MAN: CITY LIFE</h2>
+        <b>WASD</b> — Движение / Стены<br>
+        <b>SPACE</b> — Прыжок / Отскок<br>
+        <b>ЛКМ</b> — Паутина
     </div>
     <div id="crosshair"></div>
 
@@ -22,7 +22,7 @@
         const THREE = require('three');
 
         let scene, camera, renderer, player, webLine;
-        let buildings = [];
+        let buildings = [], npcs = [], cityObjects = [];
         let velocity = new THREE.Vector3();
         let keys = {};
         let yaw = 0, pitch = 0;
@@ -38,34 +38,29 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020205);
-            scene.fog = new THREE.FogExp2(0x020205, 0.006);
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.FogExp2(0x050510, 0.007);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-            
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // Освещение
-            scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
             const sun = new THREE.DirectionalLight(0x5555ff, 1);
             sun.position.set(100, 200, 50);
             scene.add(sun);
 
-            createUltraCity();
+            createLivingCity();
             createSpiderModel();
 
-            // Паутина
             webLine = new THREE.Line(
                 new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-                new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 })
+                new THREE.LineBasicMaterial({ color: 0xffffff })
             );
             webLine.visible = false;
             scene.add(webLine);
 
-            // Управление
             document.addEventListener('mousedown', () => { 
                 if(document.pointerLockElement) isSwinging = true; else document.body.requestPointerLock(); 
             });
@@ -81,97 +76,144 @@
             });
         }
 
-        function createUltraCity() {
-            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        function createLivingCity() {
+            const size = 10; // Размер одного квартала
+            const grid = 20; // Количество кварталов
             
-            for (let i = 0; i < 300; i++) {
-                const h = Math.random() * 80 + 20;
-                const w = Math.random() * 10 + 10;
-                const posX = (Math.random() - 0.5) * 800;
-                const posZ = (Math.random() - 0.5) * 800;
+            // 1. Генерация дорог и тротуаров
+            const groundGeo = new THREE.PlaneGeometry(size, size);
+            
+            // Текстура дороги
+            const roadCanvas = document.createElement('canvas');
+            roadCanvas.width = 128; roadCanvas.height = 128;
+            const rCtx = roadCanvas.getContext('2d');
+            rCtx.fillStyle = '#222'; rCtx.fillRect(0,0,128,128);
+            rCtx.fillStyle = '#ff0'; rCtx.fillRect(60, 0, 8, 40); rCtx.fillRect(60, 80, 8, 40);
+            const roadTex = new THREE.CanvasTexture(roadCanvas);
 
-                // Основное здание
-                const canvas = document.createElement('canvas');
-                canvas.width = 128; canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#111'; ctx.fillRect(0,0,128,128);
-                ctx.fillStyle = Math.random() > 0.5 ? '#00eeff' : '#ffaa00';
-                for(let y=0; y<10; y++) for(let x=0; x<5; x++) if(Math.random()>0.4) ctx.fillRect(x*25+5, y*12+5, 15, 8);
-                
-                const winTex = new THREE.CanvasTexture(canvas);
-                winTex.wrapS = winTex.wrapT = THREE.RepeatWrapping;
-                winTex.repeat.set(1, h/10);
+            // Текстура тротуара
+            const sideCanvas = document.createElement('canvas');
+            sideCanvas.width = 64; sideCanvas.height = 64;
+            const sCtx = sideCanvas.getContext('2d');
+            sCtx.fillStyle = '#444'; sCtx.fillRect(0,0,64,64);
+            sCtx.strokeStyle = '#555'; sCtx.strokeRect(0,0,64,64);
+            const sideTex = new THREE.CanvasTexture(sideCanvas);
 
-                const b = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ map: winTex, emissive: 0x222222 }));
-                b.position.set(posX, h/2, posZ);
-                b.scale.set(w, h, w);
-                
-                // Добавляем крышу
-                const roof = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x050505 }));
-                roof.scale.set(w+0.5, 2, w+0.5);
-                roof.position.set(posX, h, posZ);
-                
-                scene.add(b);
-                scene.add(roof);
-                
-                buildings.push(b, roof);
+            for(let x = -grid; x < grid; x++) {
+                for(let z = -grid; z < grid; z++) {
+                    let isRoad = (x % 4 === 0 || z % 4 === 0);
+                    const mat = new THREE.MeshStandardMaterial({ map: isRoad ? roadTex : sideTex });
+                    const tile = new THREE.Mesh(groundGeo, mat);
+                    tile.position.set(x * size, 0, z * size);
+                    tile.rotation.x = -Math.PI / 2;
+                    scene.add(tile);
+                    cityObjects.push(tile);
+
+                    // 2. Здания (только не на дорогах)
+                    if (!isRoad && Math.random() > 0.3) {
+                        createBuilding(x * size, z * size);
+                    } else if (!isRoad) {
+                        createKiosk(x * size, z * size);
+                        createPerson(x * size, z * size);
+                    }
+                }
             }
+        }
+
+        function createBuilding(x, z) {
+            const h = Math.random() * 60 + 20;
+            const w = 8;
+            const bGeo = new THREE.BoxGeometry(w, h, w);
+            
+            // Текстура окон + Магазин снизу
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#111'; ctx.fillRect(0,0,128,128);
+            // Витрина магазина
+            ctx.fillStyle = '#55aaff'; ctx.fillRect(0, 100, 128, 28);
+            ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText("SHOP", 10, 115);
+            // Окна
+            ctx.fillStyle = '#ffcc00';
+            for(let i=0; i<5; i++) for(let j=0; j<6; j++) if(Math.random()>0.4) ctx.fillRect(i*25+5, j*15+5, 15, 8);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, h/10);
+
+            const b = new THREE.Mesh(bGeo, new THREE.MeshStandardMaterial({ map: tex }));
+            b.position.set(x, h/2, z);
+            
+            // Крыша
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, 1, w+0.2), new THREE.MeshStandardMaterial({color: 0x111}));
+            roof.position.set(x, h, z);
+
+            scene.add(b, roof);
+            buildings.push(b, roof);
+        }
+
+        function createKiosk(x, z) {
+            const k = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 2), new THREE.MeshStandardMaterial({color: 0xaa0000}));
+            k.position.set(x + (Math.random()-0.5)*5, 1.5, z + (Math.random()-0.5)*5);
+            scene.add(k);
+            buildings.push(k);
+        }
+
+        function createPerson(x, z) {
+            const p = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.5), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
+            p.position.set(x, 0.5, z);
+            p.userData = { dir: Math.random() * Math.PI * 2, speed: 0.02 + Math.random()*0.03 };
+            scene.add(p);
+            npcs.push(p);
         }
 
         function createSpiderModel() {
             player = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1, 4, 8), new THREE.MeshStandardMaterial({ color: 0xaa0000 }));
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0xaa0000 }));
-            head.position.y = 0.8;
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.8), new THREE.MeshStandardMaterial({ color: 0xaa0000 }));
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshStandardMaterial({ color: 0xaa0000 }));
+            head.position.y = 0.6;
             player.add(body, head);
-            player.position.y = 100;
+            player.position.set(0, 10, 0);
             scene.add(player);
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // Рефреш состояния стены
+            // NPC Движение
+            npcs.forEach(p => {
+                p.position.x += Math.cos(p.userData.dir) * p.userData.speed;
+                p.position.z += Math.sin(p.userData.dir) * p.userData.speed;
+                if(Math.random() > 0.99) p.userData.dir += Math.PI / 2;
+            });
+
             isOnWall = false;
-
-            // 1. Raycasting для коллизий (Стены и Крыши)
-            const rayDirs = [
-                new THREE.Vector3(0, -1, 0), // Пол
-                new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), // Стены
-                new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
-            ];
-
-            raycaster.far = 1.5;
-            for(let dir of rayDirs) {
-                raycaster.set(player.position, dir);
-                const intersects = raycaster.intersectObjects(buildings);
-                if(intersects.length > 0) {
-                    if(dir.y === -1) { // Мы на крыше
-                        if(velocity.y < 0) {
-                            player.position.y = intersects[0].point.y + 1.2;
-                            velocity.y = 0;
-                        }
-                    } else { // Мы у стены
-                        isOnWall = true;
-                        wallNormal.copy(dir).negate();
+            // Raycasting
+            const dirs = [new THREE.Vector3(0,-1,0), new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)];
+            raycaster.far = 1.2;
+            for(let d of dirs) {
+                raycaster.set(player.position, d);
+                const hits = raycaster.intersectObjects(buildings);
+                if(hits.length > 0) {
+                    if(d.y === -1) { 
+                        player.position.y = hits[0].point.y + 0.8; 
+                        velocity.y = 0; 
+                    } else { 
+                        isOnWall = true; wallNormal.copy(d).negate(); 
                     }
                 }
             }
 
-            // 2. Логика паутины
+            // Паутина
             if(isSwinging) {
                 if(!webLine.visible) {
                     raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-                    raycaster.far = 400;
+                    raycaster.far = 500;
                     const hits = raycaster.intersectObjects(buildings);
-                    if(hits.length > 0) {
-                        swingPoint.copy(hits[0].point);
-                        webLine.visible = true;
-                    }
+                    if(hits.length > 0) { swingPoint.copy(hits[0].point); webLine.visible = true; }
                 }
                 if(webLine.visible) {
-                    const d = new THREE.Vector3().subVectors(swingPoint, player.position).normalize();
-                    velocity.add(d.multiplyScalar(0.015));
+                    velocity.add(new THREE.Vector3().subVectors(swingPoint, player.position).normalize().multiplyScalar(0.015));
                     const pos = webLine.geometry.attributes.position.array;
                     pos[0]=player.position.x; pos[1]=player.position.y; pos[2]=player.position.z;
                     pos[3]=swingPoint.x; pos[4]=swingPoint.y; pos[5]=swingPoint.z;
@@ -179,31 +221,23 @@
                 }
             }
 
-            // 3. Управление
+            // Физика и Управление
             if(isOnWall) {
-                velocity.y *= 0.8; // Замедление падения на стене
-                const climbSpeed = 0.1;
-                if(keys['KeyW']) velocity.y = climbSpeed;
-                if(keys['KeyS']) velocity.y = -climbSpeed;
-                
-                // Движение влево-вправо по стене (через кросс-вектор)
+                velocity.y *= 0.8;
+                if(keys['KeyW']) velocity.y = 0.12;
+                if(keys['KeyS']) velocity.y = -0.12;
                 const right = new THREE.Vector3(0,1,0).cross(wallNormal).normalize();
-                if(keys['KeyA']) player.position.add(right.multiplyScalar(climbSpeed));
-                if(keys['KeyD']) player.position.add(right.multiplyScalar(-climbSpeed));
-
-                if(keys['Space']) { // Отскок от стены
-                    velocity.copy(wallNormal).multiplyScalar(0.4);
-                    velocity.y = 0.3;
-                    isOnWall = false;
-                }
+                if(keys['KeyA']) player.position.add(right.multiplyScalar(0.1));
+                if(keys['KeyD']) player.position.add(right.multiplyScalar(-0.1));
+                if(keys['Space']) { velocity.copy(wallNormal).multiplyScalar(0.5); velocity.y = 0.3; }
             } else {
                 velocity.y += GRAVITY;
-                const moveSpeed = 0.005;
-                if (keys['KeyW']) { velocity.z -= moveSpeed * Math.cos(yaw); velocity.x -= moveSpeed * Math.sin(yaw); }
-                if (keys['KeyS']) { velocity.z += moveSpeed * Math.cos(yaw); velocity.x += moveSpeed * Math.sin(yaw); }
-                if (keys['KeyA']) { velocity.x -= moveSpeed * Math.cos(yaw); velocity.z += moveSpeed * Math.sin(yaw); }
-                if (keys['KeyD']) { velocity.x += moveSpeed * Math.cos(yaw); velocity.z -= moveSpeed * Math.sin(yaw); }
-                if (keys['Space'] && player.position.y < 1.5) velocity.y = 0.25;
+                const s = 0.006;
+                if(keys['KeyW']) { velocity.z -= s * Math.cos(yaw); velocity.x -= s * Math.sin(yaw); }
+                if(keys['KeyS']) { velocity.z += s * Math.cos(yaw); velocity.x += s * Math.sin(yaw); }
+                if(keys['KeyA']) { velocity.x -= s * Math.cos(yaw); velocity.z += s * Math.sin(yaw); }
+                if(keys['KeyD']) { velocity.x += s * Math.cos(yaw); velocity.z -= s * Math.sin(yaw); }
+                if(keys['Space'] && player.position.y < 1) velocity.y = 0.25;
             }
 
             velocity.multiplyScalar(FRICTION);
@@ -217,12 +251,6 @@
 
             renderer.render(scene, camera);
         }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
